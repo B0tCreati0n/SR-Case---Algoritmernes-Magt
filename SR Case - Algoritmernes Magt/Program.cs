@@ -32,7 +32,7 @@ namespace SR_Case___Algoritmernes_Magt
             double weightLikes = 1; //default: 1
             double weightComments = 3; //default: 3
             double weightShares = 5; //default: 5
-            double weightGravity = 1.8; //default: 1.8
+            double weightGravity = 1.3; //default: 1.8
             double weightFinalScore = 1000; //default: 1000
 
 
