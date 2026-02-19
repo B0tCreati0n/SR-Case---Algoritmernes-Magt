@@ -48,14 +48,14 @@ namespace SR_Case___Algoritmernes_Magt
                 return -1;
             }
 
-            bool isDiscoveryRoll = _random.Next(1, 14) == 1;
             //calculate the factors for the post value calculation
+            bool isDiscoveryRoll = _random.Next(1, 14) == 1;
             double socialValue = Math.Log10((likes* weightLikes) + (comments * weightComments) + (shares * weightShares) + 1);
-            double engagementFactor = postEngagement / 1000.0;
-            double interestValue = 1 + (PTIS / 100); // Normalize PTIS to a value between 1 and 2
+            double interestValue = 1 + (PTIS / 50.0); // Normalize PTIS to a value between 1 and 2
+            double engagementScore = Math.Log10(postEngagement + 1) * 1.5;
             double gravity = Math.Pow(daysSincePost + 1, weightGravity);
             if (GlobalConfig.debugMode) {
-                Console.WriteLine("Debug Mode | SocialValue: " + socialValue + " EngagementFactor: " + engagementFactor + " InterestValue: " + interestValue + " Gravity: " + gravity);
+                Console.WriteLine("Debug Mode | SocialValue: " + socialValue + " Post Engagement: " + postEngagement + " InterestValue: " + interestValue + " Gravity: " + gravity);
             }
 
 
@@ -69,7 +69,7 @@ namespace SR_Case___Algoritmernes_Magt
             if (GlobalConfig.feedModePersonalization == true && !isDiscoveryRoll) 
             {
                 // Calculate the Final Post Score with personalization
-                double FPS = (((socialValue + engagementFactor) * interestValue) / gravity) * weightFinalScore;
+                double FPS = (((socialValue + engagementScore) * interestValue) / gravity) * weightFinalScore;
                 if (GlobalConfig.debugMode) {
                     Console.WriteLine("Debug Mode | FinalPostScore: " + FPS);
                 }
@@ -78,7 +78,7 @@ namespace SR_Case___Algoritmernes_Magt
             else 
             {
                 // Calculate the Final Post Score without personalization
-                double FPS = ((socialValue + engagementFactor) / gravity) * weightFinalScore;
+                double FPS = ((socialValue + engagementScore) / gravity) * weightFinalScore;
                 if (GlobalConfig.debugMode) {
                     Console.WriteLine("Debug Mode | FinalPostScore: " + FPS);
                 }
