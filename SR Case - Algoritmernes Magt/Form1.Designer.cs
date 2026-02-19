@@ -155,6 +155,7 @@
             Controls.Add(btn_skip);
             Controls.Add(picBox_feed);
             FormBorderStyle = FormBorderStyle.FixedToolWindow;
+            MaximizeBox = false;
             Name = "Form1";
             StartPosition = FormStartPosition.CenterScreen;
             Text = "User UI";

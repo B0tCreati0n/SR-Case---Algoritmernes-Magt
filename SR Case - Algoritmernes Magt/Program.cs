@@ -1,10 +1,14 @@
 namespace SR_Case___Algoritmernes_Magt
 {
+    public static class GlobalConfig
+    {
+        // These act as your global variables
+        public readonly static bool feedModePersonalization = false; //default: true
+        public readonly static bool debugMode = false; //default: false
+    }
+
     internal static class Program
     {
-        //settings
-
-
         /// <summary>
         ///  The main entry point for the application.
         /// </summary>
@@ -40,18 +44,31 @@ namespace SR_Case___Algoritmernes_Magt
                 return -1;
             }
 
-            /*
-            /The algorithm to calculate the post value
-           */
+            //calculate the values
             double socialValue = Math.Log10((likes* weightLikes) + (comments * weightComments) + (shares * weightShares) + 1);
             double engagementFactor = postEngagement / 1000.0;
             double interestValue = PTIS / 100.0; // Normalize PTIS to a value between 0 and 1
             double gravity = Math.Pow(daysSincePost + 1, weightGravity);
 
+
+            /*
+             * 
+             *The algorithm to calculate the post value
+             *
+             */
+
+            //checks if feed personalization is active
+            if (GlobalConfig.feedModePersonalization == true) 
+            {
             // Calculate the Final Post Score
             double FPS = (((socialValue + engagementFactor) * interestValue) / gravity) * weightFinalScore;
-
             return (long)FPS;
+            } 
+            else {
+                // Calculate the Final Post Score without personalization
+                double FPS = ((socialValue + engagementFactor) / gravity) * weightFinalScore;
+                return (long)FPS;
+            }
         }
     }
 }
