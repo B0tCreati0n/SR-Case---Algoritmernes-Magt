@@ -4,14 +4,13 @@ using System.IO;
 
 namespace SR_Case___Algoritmernes_Magt
 {
-    public static class GlobalConfig
+    public static class GlobalConfig //settings
     {
-        // These act as your global variables
         public readonly static bool feedModePersonalization = true; //default: true
         public readonly static bool debugMode = false; //default: false
     }
 
-    public class Post
+    public class Post //define the class for a post
     {
         public int postId { get; set; }
         public required string title { get; set; }
@@ -40,7 +39,7 @@ namespace SR_Case___Algoritmernes_Magt
          * Calculates the value of a post that is Personally Relevant to the user 
          */
         private static readonly Random _random = new Random();
-        static long postValue(int PTIS, int likes, int comments, int shares, int postEngagement, int daysSincePost)
+        static long postValue(int PTIS, int likes, int comments, int shares, int postEngagement, DateTime postDate)
         {
             //Weights
             double weightLikes = 1; //default: 1
@@ -51,13 +50,13 @@ namespace SR_Case___Algoritmernes_Magt
 
 
             // Validate input values
-            if (PTIS < 0 || PTIS > 100 || likes < 0 || comments < 0 || shares < 0 || postEngagement < 0 || postEngagement > 1000 || daysSincePost < 0)
+            if (PTIS < 0 || PTIS > 100 || likes < 0 || comments < 0 || shares < 0 || postEngagement < 0 || postEngagement > 1000)
             {
                 // If any input value is out of the expected range, return -1 to indicate an error
                 // And log invalid input values for debugging
                 Console.WriteLine("Invalid input values.");
                 if (GlobalConfig.debugMode) {
-                    Console.WriteLine("Debug Mode | PTIS: " + PTIS + " Likes: " + likes + " Comments: " + comments + " Shares: " + shares + " Post Engagement Value: " + postEngagement + " Old(days): " + daysSincePost);
+                    Console.WriteLine("Debug Mode | PTIS: " + PTIS + " Likes: " + likes + " Comments: " + comments + " Shares: " + shares + " Post Engagement Value: " + postEngagement);
                 }
                 return -1;
             }
@@ -67,6 +66,7 @@ namespace SR_Case___Algoritmernes_Magt
             double socialValue = Math.Log10((likes* weightLikes) + (comments * weightComments) + (shares * weightShares) + 1);
             double interestValue = 1 + (PTIS / 50.0); // Normalize PTIS to a value between 1 and 2
             double engagementScore = Math.Log10(postEngagement + 1) * 1.5;
+            double daysSincePost = (DateTime.Now - postDate).TotalDays;
             double gravity = Math.Pow(daysSincePost + 1, weightGravity);
             if (GlobalConfig.debugMode) {
                 Console.WriteLine("Debug Mode | SocialValue: " + socialValue + " Post Engagement: " + postEngagement + " InterestValue: " + interestValue + " Gravity: " + gravity);
