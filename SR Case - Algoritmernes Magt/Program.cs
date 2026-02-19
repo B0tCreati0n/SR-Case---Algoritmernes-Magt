@@ -1,3 +1,5 @@
+using System;
+
 namespace SR_Case___Algoritmernes_Magt
 {
     public static class GlobalConfig
@@ -23,6 +25,7 @@ namespace SR_Case___Algoritmernes_Magt
         /*
          * Calculates the value of a post that is Personally Relevant to the user 
          */
+        private static readonly Random _random = new Random();
         static long postValue(int PTIS, int likes, int comments, int shares, int postEngagement, int daysSincePost)
         {
             //Weights
@@ -45,11 +48,11 @@ namespace SR_Case___Algoritmernes_Magt
                 return -1;
             }
 
-
+            bool isDiscoveryRoll = _random.Next(1, 14) == 1;
             //calculate the factors for the post value calculation
             double socialValue = Math.Log10((likes* weightLikes) + (comments * weightComments) + (shares * weightShares) + 1);
             double engagementFactor = postEngagement / 1000.0;
-            double interestValue = PTIS / 100.0; // Normalize PTIS to a value between 0 and 1
+            double interestValue = 1 + (PTIS / 100); // Normalize PTIS to a value between 1 and 2
             double gravity = Math.Pow(daysSincePost + 1, weightGravity);
             if (GlobalConfig.debugMode) {
                 Console.WriteLine("Debug Mode | SocialValue: " + socialValue + " EngagementFactor: " + engagementFactor + " InterestValue: " + interestValue + " Gravity: " + gravity);
@@ -63,7 +66,7 @@ namespace SR_Case___Algoritmernes_Magt
              */
 
             //checks if feed personalization is active
-            if (GlobalConfig.feedModePersonalization == true) 
+            if (GlobalConfig.feedModePersonalization == true && !isDiscoveryRoll) 
             {
                 // Calculate the Final Post Score with personalization
                 double FPS = (((socialValue + engagementFactor) * interestValue) / gravity) * weightFinalScore;
