@@ -1,15 +1,29 @@
 using System;
+using System.Text.Json;
+using System.IO;
 
 namespace SR_Case___Algoritmernes_Magt
 {
     public static class GlobalConfig
     {
         // These act as your global variables
-        public readonly static bool feedModePersonalization = false; //default: true
+        public readonly static bool feedModePersonalization = true; //default: true
         public readonly static bool debugMode = false; //default: false
     }
 
-
+    public class Post
+    {
+        public int postId { get; set; }
+        public required string title { get; set; }
+        public required string description { get; set; }
+        public required string imagePath { get; set; }
+        public int likes { get; set; }
+        public int comments { get; set; }
+        public int shares { get; set; }
+        public int engagement { get; set; }
+        public required List<string> tags { get; set; }
+        public DateTime PostDate { get; set; }
+    }
 
     internal static class Program
     {
@@ -84,6 +98,45 @@ namespace SR_Case___Algoritmernes_Magt
                 }
                 return (long)FPS;
             }
+        }
+
+        public static void CreateNewPost(string title, string description, string extension, List<string> tags)
+        {
+            // Define the path to posts.json
+            string postsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..\\..\\..\\..\\data\\posts.json");
+
+            // Takes existing posts and deserializes them
+            List<Post> posts = new List<Post>();
+            if (File.Exists(postsPath))
+            {
+                string existingJson = File.ReadAllText(postsPath);
+                posts = JsonSerializer.Deserialize<List<Post>>(existingJson) ?? new List<Post>();
+            }
+
+            int newId = posts.Count > 0 ? posts.Max(p => p.postId) + 1 : 1; //creates a new id
+
+            Post newPost = new Post
+            {
+                postId = newId,
+                title = title,
+                description = description,
+                imagePath = $"data/assets/images/{newId}.{extension}",
+                likes = 0,
+                comments = 0,
+                shares = 0,
+                engagement = 0,
+                tags = tags,
+                PostDate = DateTime.Now
+            };
+
+            // save the new post
+            posts.Add(newPost); // Add the new post to the list
+            var options = new JsonSerializerOptions { WriteIndented = true }; // For better readability of the JSON file
+            string updatedJson = JsonSerializer.Serialize(posts, options); // Serialize the updated list back to JSON
+
+            File.WriteAllText(postsPath, updatedJson); // Save it to the file
+
+            Console.WriteLine("Successfully created Post, ID: " + newId + ", Title: "+ title);
         }
     }
 }
