@@ -129,7 +129,7 @@ namespace SR_Case___Algoritmernes_Magt
                 PostDate = DateTime.Now
             };
 
-            // save the new post
+            // save the new post 
             posts.Add(newPost); // Add the new post to the list
             var options = new JsonSerializerOptions { WriteIndented = true }; // For better readability of the JSON file
             string updatedJson = JsonSerializer.Serialize(posts, options); // Serialize the updated list back to JSON
