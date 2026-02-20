@@ -49,6 +49,7 @@ namespace SR_Case___Algoritmernes_Magt
             {
                 File.Create(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..\\..\\..\\..\\data\\posts.json"));
             }
+
             if (!File.Exists(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..\\..\\..\\..\\data\\users.json")))
             {
                 File.Create(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..\\..\\..\\..\\data\\users.json"));
@@ -88,7 +89,7 @@ namespace SR_Case___Algoritmernes_Magt
             }
 
             //calculate the factors for the post value calculation
-            bool isDiscoveryRoll = _random.Next(1, 14) == 1;
+            bool isDiscoveryRoll = _random.Next(1, 14) == 1; // 1 in 13 chance for discovery roll
             double socialValue = Math.Log10((likes* weightLikes) + (comments * weightComments) + (shares * weightShares) + 1);
             double interestValue = 1 + (PTIS / 50.0); // Normalize PTIS to a value between 1 and 2
             double engagementScore = Math.Log10(postEngagement + 1) * 1.5;
