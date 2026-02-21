@@ -51,6 +51,7 @@
             btn_skip.TabIndex = 1;
             btn_skip.Text = "Next";
             btn_skip.UseVisualStyleBackColor = true;
+            btn_skip.Click += btn_skip_Click;
             // 
             // btn_like
             // 

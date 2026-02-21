@@ -1,0 +1,15 @@
+[
+  {
+    "userId": 1,
+    "name": "Noah",
+    "pitsTags": [
+        { "topic": "politics", "score": 0 },
+        { "topic": "sport", "score": 0 },
+        { "topic": "funny", "score": 0 },
+        { "topic": "dogs", "score": 0 }
+    ],
+    "lastWatchedVideos": [
+        {"videoId": "1"}
+    ]
+  }
+]

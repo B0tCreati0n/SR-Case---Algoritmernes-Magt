@@ -9,12 +9,13 @@ namespace SR_Case___Algoritmernes_Magt
 
     /*To-DO
      * - The first few post shoud be random to get a good variety of posts in the beginning, before the algorithm has enough data to personalize the feed
-     * -
+     * - Bug Fix: If there is no data in the posts.json file, the app crashes. This is because the deserialization process fails when it encounters an empty file.
      */
     public static class GlobalConfig //settings
     {
         public readonly static bool feedModePersonalization = true; //default: true
         public readonly static bool debugMode = false; //default: false
+        public readonly static int watchHistorySize = 10;
     }
 
     public class Post //define the class for a post
@@ -77,12 +78,58 @@ namespace SR_Case___Algoritmernes_Magt
             return;
         }
 
+        static int userId ()//stub
+        {
+            //This is gonna return the current user's userId
+            return 1;
+        
+        }
+
+        public static string getPostInfo (int postId, string infoType) //stub
+        {
+            // This function would retrieve the necessary information about a post, such as its tags and engagement metrics, to be used in the feed algorithm.
+            // Options are going to be "tags", "likes", "comments", "shares", "engagement", "postDate", "title" and "description"
+
+            string postsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..\\..\\..\\..\\data\\posts.json");
+
+            return "stub";
+        }
+
+        public static int requstNewPostToFeed(int userId) //stub
+        {
+            // This is a "organizer" you know, like does all the handeling of requesting a new post to the feed.
+            return -1;
+        }
+
+        static void displayPost(int postId) //stub
+        {
+            // This function would be responsible for displaying the post in the feed.
+            return;
+        }
+
+        public static void likePost(int postId, int userId) //stub
+        {
+            // This function would handle the logic for when a user likes a post, including updating the post's like count and the user's interaction history.
+            return;
+        }
+
+        public static void commentOnPost(int postId, int userId) //stub
+        {
+            // This function would handle the logic for when a user comments on a post, including updating the post's comment count and the user's interaction history.
+            return;
+        }
+
+        public static void sharePost(int postId, int userId) //stub
+        {
+            // This function would handle the logic for when a user shares a post, including updating the post's share count and the user's interaction history.
+            return;
+        }
 
         /*
          * Calculates the value of a post that is Personally Relevant to the user 
          */
-        static readonly Random _random = new Random();
-        static long postValue(int PTIS, int likes, int comments, int shares, int postEngagement, DateTime postDate)
+        static readonly Random _random = new Random(); // Creates a random number for the discovery roll
+        static long postValue(bool newUser, int PTIS, int likes, int comments, int shares, int postEngagement, DateTime postDate)
         {
             //Weights
             double weightLikes = 1; //default: 1
@@ -93,7 +140,7 @@ namespace SR_Case___Algoritmernes_Magt
 
 
             // Validate input values
-            if (PTIS < 0 || PTIS > 100 || likes < 0 || comments < 0 || shares < 0 || postEngagement < 0 || postEngagement > 1000)
+            if (PTIS <= 0 || PTIS >= 100 || likes <= 0 || comments <= 0 || shares <= 0 || postEngagement <= 0 || postEngagement >= 1000)
             {
                 // If any input value is out of the expected range, return -1 to indicate an error
                 // And log invalid input values for debugging
@@ -121,7 +168,7 @@ namespace SR_Case___Algoritmernes_Magt
              */
 
             //checks if feed personalization is active
-            if (GlobalConfig.feedModePersonalization == true && !isDiscoveryRoll) 
+            if (GlobalConfig.feedModePersonalization == true && !isDiscoveryRoll && !newUser) 
             {
                 // Calculate the Final Post Score with personalization
                 double FPS = (((socialValue + engagementScore) * interestValue) / gravity) * weightFinalScore;
@@ -151,6 +198,8 @@ namespace SR_Case___Algoritmernes_Magt
             string extension = Path.GetExtension(imageFilePath);
 
             // Takes existing posts and deserializes them
+
+            // There is a bug where if no data is in the posts.json file, it will crash.
             List<Post> posts = new List<Post>();
             if (File.Exists(postsPath) && postsPath.Length != 0)
             {

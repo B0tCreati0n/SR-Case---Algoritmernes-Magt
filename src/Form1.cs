@@ -17,5 +17,10 @@ namespace SR_Case___Algoritmernes_Magt
             Form2 newPostForm = new Form2();
             newPostForm.ShowDialog();
         }
+
+        private void btn_skip_Click(object sender, EventArgs e)
+        {
+            Program.requstNewPostToFeed();
+        }
     }
 }
