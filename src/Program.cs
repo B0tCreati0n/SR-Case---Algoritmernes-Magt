@@ -86,57 +86,57 @@ namespace SR_Case___Algoritmernes_Magt
         
         }
 
-        static int PTIS(int userId, int postId) //stub
+        static int getPTIS(int userId, int postId)
         {
-            /*
-            // 1. Setup Paths
             string usersPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..\\..\\..\\..\\data\\users.json");
             string postsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..\\..\\..\\..\\data\\posts.json");
 
-            try
+            //TBH i donno how this works but it works - I LOVE YOU RANDOM STACKOVERFLOW USERNAME i can't remember <3
+            using JsonDocument usersDoc = JsonDocument.Parse(File.ReadAllText(usersPath));
+            using JsonDocument postsDoc = JsonDocument.Parse(File.ReadAllText(postsPath));
+
+            var user = usersDoc.RootElement.EnumerateArray()
+            .FirstOrDefault(u => u.GetProperty("userId").GetInt32() == userId);
+            var post = postsDoc.RootElement.EnumerateArray()
+                .FirstOrDefault(p => p.GetProperty("postId").GetInt32() == postId);
+
+            // Checks if there are any tags the user has seen before
+            if (user.ValueKind == JsonValueKind.Undefined && post.ValueKind == JsonValueKind.Undefined)
+                return 0;
+
+            // Puts the post tags and the user pitsTags into lists
+            var postTags = post.GetProperty("tags").EnumerateArray().ToList();
+            var userPits = user.GetProperty("pitsTags").EnumerateArray().ToList();
+
+            // If there are no tags in the post or the user has no pitsTags, return 0
+            if (postTags.Count == 0)
             {
-                // 2. Read and Parse JSON
-                var users = JsonSerializer.Deserialize<List<User>>(File.ReadAllText(usersPath));
-                var posts = JsonSerializer.Deserialize<List<Post>>(File.ReadAllText(postsPath));
+                return 0;
+            }
+            if (userPits.Count == 0)
+            {
+                return 0;
+            }
 
-                // 3. Find the specific user and post
-                var user = users.FirstOrDefault(u => u.userId == userId);
-                var post = posts.FirstOrDefault(p => p.postId == postId);
+            int totalScore = 0;
 
-                if (user == null || post == null || post.tags == null || post.tags.Count == 0)
-                    return 0;
+            foreach (var tagElement in postTags)
+            {
+                // Get the post tag, trim it, and make it lowercase
+                string currentPostTag = tagElement.GetString()?.Trim().ToLower() ?? "";
 
-                int totalScore = 0;
-                int matchedTagsCount = 0;
+                // Look for a matching tag in the user's pitsTags
+                var match = userPits.FirstOrDefault(ut =>
+                    ut.GetProperty("tag").GetString()?.ToLower() == currentPostTag);
 
-                // 4. Cross-reference tags (Case-Insensitive)
-                foreach (var postTag in post.tags)
+                if (match.ValueKind != JsonValueKind.Undefined)
                 {
-                    // ToLower() and Trim() to handle the " Bilka" spacing in your JSON
-                    string cleanPostTag = postTag.Trim().ToLower();
-
-                    var match = user.pitsTags.FirstOrDefault(ut => ut.tag.ToLower() == cleanPostTag);
-
-                    if (match != null)
-                    {
-                        totalScore += match.score;
-                        matchedTagsCount++;
-                    }
+                    totalScore += match.GetProperty("score").GetInt32();
                 }
-
-                // 5. Calculate Average
-                // If no tags matched, return 0 to avoid division by zero
-                if (post.tags.Count == 0) return 0;
-
-                // Your requirement: Divide total score by the amount of tags on the post
-                return totalScore / post.tags.Count;
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error processing PTIS: {ex.Message}");
-                return -1;
-            }
-            */
+
+            // Return the average
+            return totalScore / postTags.Count;
         }
 
         public static int requstNewPostToFeed(int userId) //stub
@@ -181,7 +181,6 @@ namespace SR_Case___Algoritmernes_Magt
             double weightComments = 3; //default: 3
             double weightShares = 5; //default: 5
             double weightGravity = 1.3; //default: 1.3
-            double weightFinalScore = 1000; //default: 1000
 
 
             // Validate input values
@@ -199,7 +198,7 @@ namespace SR_Case___Algoritmernes_Magt
             //calculate the factors for the post value calculation
             bool isDiscoveryRoll = _random.Next(1, 14) == 1; // 1 in 13 chance for discovery roll
             double socialValue = Math.Log10((likes* weightLikes) + (comments * weightComments) + (shares * weightShares) + 1);
-            double interestValue = 1 + (PTIS / 50.0); // Normalize PTIS to a value between 1 and 2
+            int interestValue = 1 + (PTIS / 25);
             double engagementScore = Math.Log10(postEngagement + 1) * 1.5;
             double daysSincePost = (DateTime.Now - postDate).TotalDays;
             double gravity = Math.Pow(daysSincePost + 1, weightGravity);
@@ -216,7 +215,7 @@ namespace SR_Case___Algoritmernes_Magt
             if (GlobalConfig.feedModePersonalization == true && !isDiscoveryRoll && !newUser) 
             {
                 // Calculate the Final Post Score with personalization
-                double FPS = (((socialValue + engagementScore) * interestValue) / gravity) * weightFinalScore;
+                double FPS = (((socialValue + engagementScore) * interestValue) / gravity);
                 if (GlobalConfig.debugMode) {
                     Console.WriteLine("Debug Mode | FinalPostScore: " + FPS);
                 }
@@ -225,7 +224,7 @@ namespace SR_Case___Algoritmernes_Magt
             else 
             {
                 // Calculate the Final Post Score without personalization
-                double FPS = ((socialValue + engagementScore) / gravity) * weightFinalScore;
+                double FPS = ((socialValue + engagementScore) / gravity);
                 if (GlobalConfig.debugMode) {
                     Console.WriteLine("Debug Mode | FinalPostScore: " + FPS);
                 }
