@@ -1,5 +1,6 @@
 using Microsoft.VisualBasic.ApplicationServices;
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Text.Json;
@@ -15,7 +16,7 @@ namespace SR_Case___Algoritmernes_Magt
     public static class GlobalConfig //settings
     {
         public readonly static bool feedModePersonalization = true; //default: true
-        public readonly static bool debugMode = false; //default: false
+        public readonly static bool debugMode = true; //default: false
         public readonly static int watchHistorySize = 10;
     }
 
@@ -79,7 +80,7 @@ namespace SR_Case___Algoritmernes_Magt
             return;
         }
 
-        static int userId ()//stub
+        public static int userId()//stub
         {
             //This is gonna return the current user's userId
             return 1;
@@ -91,62 +92,145 @@ namespace SR_Case___Algoritmernes_Magt
             string usersPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..\\..\\..\\..\\data\\users.json");
             string postsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..\\..\\..\\..\\data\\posts.json");
 
-            //TBH i donno how this works but it works - I LOVE YOU RANDOM STACKOVERFLOW USERNAME i can't remember <3
+            if (!File.Exists(usersPath) || !File.Exists(postsPath))
+            {
+                return 0;
+            }
+            /*
+             * Daniels code
+             */
             using JsonDocument usersDoc = JsonDocument.Parse(File.ReadAllText(usersPath));
             using JsonDocument postsDoc = JsonDocument.Parse(File.ReadAllText(postsPath));
 
+
+            // Finder den aktuelle bruger og det aktuelle opslag
             var user = usersDoc.RootElement.EnumerateArray()
-            .FirstOrDefault(u => u.GetProperty("userId").GetInt32() == userId);
+                .FirstOrDefault(u => u.GetProperty("userId").GetInt32() == userId);
+
             var post = postsDoc.RootElement.EnumerateArray()
                 .FirstOrDefault(p => p.GetProperty("postId").GetInt32() == postId);
 
-            // Checks if there are any tags the user has seen before
-            if (user.ValueKind == JsonValueKind.Undefined && post.ValueKind == JsonValueKind.Undefined)
+            // Checker om enten brugeren eller opslaget ikke findes i deres respektive JSON, og returnerer 0 i så fald
+            if (user.ValueKind == JsonValueKind.Undefined || post.ValueKind == JsonValueKind.Undefined)
                 return 0;
 
-            // Puts the post tags and the user pitsTags into lists
+            // Laver det om til en dictionary for at gøre det nemmere at slå op i brugerens pitsTags baseret på opslagets tags
+            // Laver det også om til lowercase og  trimer også
+            var userPitsLookup = user.GetProperty("pitsTags").EnumerateArray()
+                .Where(t => t.TryGetProperty("tag", out _))
+                .ToDictionary(
+                    t => t.GetProperty("tag").GetString()?.Trim().ToLower() ?? "",
+                    t => t.GetProperty("score").GetInt32()
+                );
+
+            // Laver en liste over opslagets tags
             var postTags = post.GetProperty("tags").EnumerateArray().ToList();
-            var userPits = user.GetProperty("pitsTags").EnumerateArray().ToList();
 
-            // If there are no tags in the post or the user has no pitsTags, return 0
-            if (postTags.Count == 0)
-            {
+            if (postTags.Count == 0 || userPitsLookup.Count == 0)
                 return 0;
-            }
-            if (userPits.Count == 0)
-            {
-                return 0;
-            }
 
             int totalScore = 0;
+            int maxScore = 0;
+            int matchCount = 0;
 
+            // Går igennem hvert tag i opslaget og tjekker om det findes i brugerens pitsTags, hvis det gør, så lægges den til scoren
             foreach (var tagElement in postTags)
             {
-                // Get the post tag, trim it, and make it lowercase
                 string currentPostTag = tagElement.GetString()?.Trim().ToLower() ?? "";
 
-                // Look for a matching tag in the user's pitsTags
-                var match = userPits.FirstOrDefault(ut =>
-                    ut.GetProperty("tag").GetString()?.ToLower() == currentPostTag);
-
-                if (match.ValueKind != JsonValueKind.Undefined)
+                if (userPitsLookup.TryGetValue(currentPostTag, out int score))
                 {
-                    totalScore += match.GetProperty("score").GetInt32();
+                    totalScore += score;
+                    matchCount++;
+                    if (score > maxScore)
+                    {
+                        maxScore = score;
+                    }
                 }
             }
 
-            // Return the average
-            return totalScore / postTags.Count;
+            // Hvis der ikke er nogen matchende tags, returneres 0
+            if (matchCount == 0) return 0;
+
+            double average = totalScore / postTags.Count;
+            int finalPTIS = (int)(average + maxScore) / 2;
+
+            if (finalPTIS <= 100)
+            {
+                return finalPTIS;
+            }
+            else
+            {
+                return 100; // Burde aldrig ske, men bare for at være sikker
+            }
+            /*
+             * End of Daniels code
+             */
         }
 
-        public static int requstNewPostToFeed(int userId) //stub
+        public static int requstNewPostToFeed(int userId)
         {
-            // This is gonna return the postId to next post
-            // This is a "organizer" you know, like does all the handeling of requesting a new post to the feed.
-            return -1;
+            string postsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..\\..\\..\\..\\data\\posts.json");
+            string usersPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..\\..\\..\\..\\data\\users.json");
+
+            if (!File.Exists(postsPath) || !File.Exists(usersPath)) return -1;
+
+            // Reads the JSON's and deserializes them into lists
+            string postsJson = File.ReadAllText(postsPath);
+            string usersJson = File.ReadAllText(usersPath);
+
+            List<Post> allPosts = JsonSerializer.Deserialize<List<Post>>(postsJson) ?? new List<Post>();
+            using JsonDocument usersDoc = JsonDocument.Parse(usersJson);
+
+
+            // Checks the user's watch history and extracts the video IDs into a list
+            var userElement = usersDoc.RootElement.EnumerateArray()
+                .FirstOrDefault(u => u.GetProperty("userId").GetInt32() == userId);
+
+            if (userElement.ValueKind == JsonValueKind.Undefined) return -1;
+
+            // Extract lastWatchedVideos IDs
+            List<int> watchHistory = new List<int>();
+            if (userElement.TryGetProperty("lastWatchedVideos", out var historyArray))
+            {
+                watchHistory = historyArray.EnumerateArray()
+                    .Select(v => int.Parse(v.GetProperty("videoId").GetString() ?? "0"))
+                    .ToList();
+            }
+
+
+            // Checks if the user has a small watch history
+            bool isNewUser = watchHistory.Count < 10;
+
+
+            // We take the 'GlobalConfig.watchHistorySize' items from history to exclude
+            var excludeIds = watchHistory.TakeLast(GlobalConfig.watchHistorySize).ToList();
+
+            int bestPostId = -1; // Initialize bestPostId to return -1 to indicate an error if no valid post is found
+            long highestScore = long.MinValue;
+
+            // Calculate post scores for all posts
+            foreach (var post in allPosts)
+            {
+                // Checks if the post is in the user's recent watch history, to avoid having to calculate the score for posts in watchHistory
+                if (excludeIds.Contains(post.postId)) continue;
+
+                // Get Personal Topic Interest Score
+                int ptisScore = getPTIS(userId, post.postId);
+                long currentPostValueScore = postValue(isNewUser, ptisScore, post.likes, post.comments, post.shares, post.engagement, post.PostDate);
+
+                // Track the highest rating
+                if (currentPostValueScore > highestScore)
+                {
+                    highestScore = currentPostValueScore;
+                    bestPostId = post.postId;
+                }
+            }
+
+            return bestPostId;
         }
 
-        static void displayPost(int postId) //stub
+        public static void displayPost(int postId) //stub
         {
             // This function would be responsible for displaying the post in the feed.
             return;
@@ -188,9 +272,9 @@ namespace SR_Case___Algoritmernes_Magt
             {
                 // If any input value is out of the expected range, return -1 to indicate an error
                 // And log invalid input values for debugging
-                Console.WriteLine("Invalid input values.");
+                Debug.WriteLine("Invalid input values.");
                 if (GlobalConfig.debugMode) {
-                    Console.WriteLine("Debug Mode | PTIS: " + PTIS + " Likes: " + likes + " Comments: " + comments + " Shares: " + shares + " Post Engagement Value: " + postEngagement);
+                    Debug.WriteLine("Debug Mode | PTIS: " + PTIS + " Likes: " + likes + " Comments: " + comments + " Shares: " + shares + " Post Engagement Value: " + postEngagement);
                 }
                 return -1;
             }
@@ -203,7 +287,7 @@ namespace SR_Case___Algoritmernes_Magt
             double daysSincePost = (DateTime.Now - postDate).TotalDays;
             double gravity = Math.Pow(daysSincePost + 1, weightGravity);
             if (GlobalConfig.debugMode) {
-                Console.WriteLine("Debug Mode | SocialValue: " + socialValue + " Post Engagement: " + postEngagement + " InterestValue: " + interestValue + " Gravity: " + gravity);
+                Debug.WriteLine("Debug Mode | SocialValue: " + socialValue + " Post Engagement: " + postEngagement + " InterestValue: " + interestValue + " Gravity: " + gravity);
             }
 
 
@@ -217,7 +301,7 @@ namespace SR_Case___Algoritmernes_Magt
                 // Calculate the Final Post Score with personalization
                 double FPS = (((socialValue + engagementScore) * interestValue) / gravity);
                 if (GlobalConfig.debugMode) {
-                    Console.WriteLine("Debug Mode | FinalPostScore: " + FPS);
+                    Debug.WriteLine("Debug Mode | FinalPostScore: " + FPS);
                 }
                 return (long)FPS;
             } 
@@ -226,7 +310,7 @@ namespace SR_Case___Algoritmernes_Magt
                 // Calculate the Final Post Score without personalization
                 double FPS = ((socialValue + engagementScore) / gravity);
                 if (GlobalConfig.debugMode) {
-                    Console.WriteLine("Debug Mode | FinalPostScore: " + FPS);
+                    Debug.WriteLine("Debug Mode | FinalPostScore: " + FPS);
                 }
                 return (long)FPS;
             }
@@ -267,7 +351,7 @@ namespace SR_Case___Algoritmernes_Magt
             {
                 if (GlobalConfig.debugMode == true)
                 {
-                    Console.WriteLine("Debug Mode | Image file not found at path: " + imageFilePath + "\nFunction has stopped to prevent id numbers to get fucked up");
+                    Debug.WriteLine("Debug Mode | Image file not found at path: " + imageFilePath + "\nFunction has stopped to prevent id numbers to get fucked up");
                 }
                 MessageBox.Show("Something went wrong there...");
                 return false;
@@ -298,7 +382,7 @@ namespace SR_Case___Algoritmernes_Magt
 
             File.WriteAllText(postsPath, updatedJson); // Save it to the file
 
-            Console.WriteLine("Successfully created Post, ID: " + newId + ", Title: "+ title);
+            Debug.WriteLine("Successfully created Post, ID: " + newId + ", Title: "+ title);
             return true;
         }
 
@@ -316,13 +400,13 @@ namespace SR_Case___Algoritmernes_Magt
             {
                 if (GlobalConfig.debugMode)
                 {
-                    Console.WriteLine("Debug Mode | Selected file: " + fileDialog.FileName);
+                    Debug.WriteLine("Debug Mode | Selected file: " + fileDialog.FileName);
                 }
                 return fileDialog.FileName;
             }
             else //if the user cancels the file selection
             {
-                Console.WriteLine("No file selected.");
+                Debug.WriteLine("No file selected.");
                 return "No file selected or something went wrong";
             }
         }
