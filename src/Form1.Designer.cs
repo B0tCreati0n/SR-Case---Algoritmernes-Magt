@@ -51,6 +51,7 @@
             btn_skip.TabIndex = 1;
             btn_skip.Text = "Next";
             btn_skip.UseVisualStyleBackColor = true;
+            btn_skip.Click += btn_skip_Click;
             // 
             // btn_like
             // 
@@ -60,7 +61,6 @@
             btn_like.TabIndex = 2;
             btn_like.Text = "Like";
             btn_like.UseVisualStyleBackColor = true;
-            btn_like.Click += button1_Click;
             // 
             // btn_share
             // 
@@ -87,7 +87,6 @@
             label_author.Size = new Size(275, 28);
             label_author.TabIndex = 7;
             label_author.Text = "Place Holder";
-            label_author.Click += label1_Click;
             // 
             // btn_comments
             // 
@@ -147,7 +146,7 @@
             btn_newPost.TabIndex = 14;
             btn_newPost.Text = "New Post";
             btn_newPost.UseVisualStyleBackColor = true;
-            btn_newPost.Click += button1_Click_2;
+            btn_newPost.Click += btn_newPost_Click;
             // 
             // Form1
             // 
