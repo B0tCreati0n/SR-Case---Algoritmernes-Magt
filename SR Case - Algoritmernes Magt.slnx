@@ -1,3 +1,5 @@
 <Solution>
-  <Project Path="src/SR Case - Algoritmernes Magt.csproj" />
+  <Project Path="src/SR Case - Algoritmernes Magt.csproj">
+    <BuildType Project="Release" />
+  </Project>
 </Solution>

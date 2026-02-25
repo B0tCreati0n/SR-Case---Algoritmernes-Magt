@@ -9,18 +9,14 @@ using System.Windows.Forms;
 namespace SR_Case___Algoritmernes_Magt
 {
 
-    /*To-DO
-     * - The first few post shoud be random to get a good variety of posts in the beginning, before the algorithm has enough data to personalize the feed
-     * - Bug Fix: If there is no data in the posts.json file, the app crashes. This is because the deserialization process fails when it encounters an empty file.
-     */
     public static class GlobalConfig //settings
     {
         public readonly static bool feedModePersonalization = true; //default: true
-        public readonly static bool debugMode = true; //default: false
-        public readonly static int watchHistorySize = 10;
+        public readonly static bool debugMode = false; //default: false
+        public readonly static int watchHistorySize = 10; // default: 10
     }
 
-    public class Post //define the class for a post
+    public class Post
     {
         public int postId { get; set; }
         public required string title { get; set; }
@@ -33,33 +29,34 @@ namespace SR_Case___Algoritmernes_Magt
         public required List<string> tags { get; set; }
         public DateTime PostDate { get; set; }
     }
+    public class User
+    {
+        public int userId { get; set; }
+        public List<UserTag> pitsTags { get; set; } = new List<UserTag>();
+        public List<WatchHistoryItem> lastWatchedVideos { get; set; } = new List<WatchHistoryItem>();
+    }
+
+    public class WatchHistoryItem
+    {
+        public required string videoId { get; set; }
+    }
+
+    public class UserTag
+    {
+        public required string tag { get; set; }
+        public int score { get; set; }
+    }
 
     internal static class Program
     {
         [STAThread]
         static void Main()
         {
+            startUp();
             // Windows Forms application code
             ApplicationConfiguration.Initialize();
             Application.Run(new Form1());
-            startUp();
         }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
         static void startUp()
         {
@@ -83,6 +80,10 @@ namespace SR_Case___Algoritmernes_Magt
         public static int userId()//stub
         {
             //This is gonna return the current user's userId
+
+            // This is a scrapped idea, don't think about it
+            // But it was the plan to be able to create multiple users and switch between them
+            // But i also have to do a report on this shit :(
             return 1;
         
         }
@@ -97,7 +98,7 @@ namespace SR_Case___Algoritmernes_Magt
                 return 0;
             }
             /*
-             * Daniels code
+             * Stack Overflow
              */
             using JsonDocument usersDoc = JsonDocument.Parse(File.ReadAllText(usersPath));
             using JsonDocument postsDoc = JsonDocument.Parse(File.ReadAllText(postsPath));
@@ -127,7 +128,9 @@ namespace SR_Case___Algoritmernes_Magt
             var postTags = post.GetProperty("tags").EnumerateArray().ToList();
 
             if (postTags.Count == 0 || userPitsLookup.Count == 0)
+            {
                 return 0;
+            }
 
             int totalScore = 0;
             int maxScore = 0;
@@ -175,7 +178,6 @@ namespace SR_Case___Algoritmernes_Magt
 
             if (!File.Exists(postsPath) || !File.Exists(usersPath)) return -1;
 
-            // Reads the JSON's and deserializes them into lists
             string postsJson = File.ReadAllText(postsPath);
             string usersJson = File.ReadAllText(usersPath);
 
@@ -206,52 +208,281 @@ namespace SR_Case___Algoritmernes_Magt
             // We take the 'GlobalConfig.watchHistorySize' items from history to exclude
             var excludeIds = watchHistory.TakeLast(GlobalConfig.watchHistorySize).ToList();
 
-            int bestPostId = -1; // Initialize bestPostId to return -1 to indicate an error if no valid post is found
+            int bestPostId = -1;
             long highestScore = long.MinValue;
 
             // Calculate post scores for all posts
             foreach (var post in allPosts)
             {
-                // Checks if the post is in the user's recent watch history, to avoid having to calculate the score for posts in watchHistory
+                // Checks if the post is in the user's recent watch history
                 if (excludeIds.Contains(post.postId)) continue;
 
-                // Get Personal Topic Interest Score
                 int ptisScore = getPTIS(userId, post.postId);
                 long currentPostValueScore = postValue(isNewUser, ptisScore, post.likes, post.comments, post.shares, post.engagement, post.PostDate);
 
-                // Track the highest rating
                 if (currentPostValueScore > highestScore)
                 {
                     highestScore = currentPostValueScore;
                     bestPostId = post.postId;
                 }
             }
+            if (GlobalConfig.debugMode) {
+                Debug.WriteLine("Debug Mode | Best Post ID: " + bestPostId + " with a score of: " + highestScore);
+            }
+            ensureTagsExistInUser(userId, allPosts.FirstOrDefault(p => p.postId == bestPostId)?.tags ?? new List<string>());
 
+            watchHistoryUpdater(userId, bestPostId); // Update the user's watch history with the new post
             return bestPostId;
         }
 
-        public static void displayPost(int postId) //stub
+        static void watchHistoryUpdater(int userId, int postId)
         {
-            // This function would be responsible for displaying the post in the feed.
-            return;
+            string usersPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..\\..\\..\\..\\data\\users.json");
+            if (!File.Exists(usersPath)) return;
+
+            try
+            {
+                // Load all users from the JSON file
+                string json = File.ReadAllText(usersPath);
+                var options = new JsonSerializerOptions { WriteIndented = true };
+                List<User> users = JsonSerializer.Deserialize<List<User>>(json) ?? new List<User>();
+
+                var user = users.FirstOrDefault(u => u.userId == userId);
+                if (user != null)
+                {
+                    // Initialize the list if it's null for some reason
+                    user.lastWatchedVideos ??= new List<WatchHistoryItem>();
+
+                    // Add the new video ID to the history
+                    user.lastWatchedVideos.Add(new WatchHistoryItem { videoId = postId.ToString() });
+
+                    // Keep only the latest "watchHistorySize" items
+                    if (user.lastWatchedVideos.Count > GlobalConfig.watchHistorySize)
+                    {
+                        // Skips the oldest entries to maintain the correct count
+                        user.lastWatchedVideos = user.lastWatchedVideos
+                            .Skip(user.lastWatchedVideos.Count - GlobalConfig.watchHistorySize)
+                            .ToList();
+                    }
+
+                    // Save the updated list back to the file
+                    string updatedJson = JsonSerializer.Serialize(users, options);
+                    File.WriteAllText(usersPath, updatedJson);
+
+                    if (GlobalConfig.debugMode)
+                    {
+                        Debug.WriteLine($"Debug Mode | Updated Watch History for User {userId}. Current count: {user.lastWatchedVideos.Count}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine("Error in watchHistoryUpdater: " + ex.Message);
+            }
         }
 
-        public static void likePost(int postId, int userId) //stub
+
+        // Checks and creates tags in the user's pitsTags if they don't already exist
+        static void ensureTagsExistInUser(int userId, List<string> postTags)
         {
-            // This function would handle the logic for when a user likes a post, including updating the post's like count and the user's interaction history.
-            return;
+            string usersPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..\\..\\..\\..\\data\\users.json");
+            if (!File.Exists(usersPath))
+            {
+                return;
+            }
+
+            try
+            {
+                // Reads the users.json file and deserializes it into a list of User objects
+                string json = File.ReadAllText(usersPath);
+                List<User> users = JsonSerializer.Deserialize<List<User>>(json) ?? new List<User>();
+                var user = users.FirstOrDefault(u => u.userId == userId);
+
+                // If the user is found, we check if they have pitsTags, if not we initialize it, and then we add any missing tags from the post to the user's pitsTags
+                if (user != null)
+                {
+                    user.pitsTags ??= new List<UserTag>();
+
+                    foreach (var tag in postTags)
+                    {
+                        if (!user.pitsTags.Any(t => t.tag == tag))
+                        {
+                            // Adds them with a default score of 10
+                            user.pitsTags.Add(new UserTag { tag = tag, score = 10 });
+                        }
+                    }
+
+                    // After ensuring all tags exist, we serialize the updated users list back to JSON and save it to the file
+                    var options = new JsonSerializerOptions { WriteIndented = true };
+                    string updatedJson = JsonSerializer.Serialize(users, options);
+                    File.WriteAllText(usersPath, updatedJson);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine("Error EnsureTagsExistInUser(): " + ex.Message);
+            }
         }
 
-        public static void commentOnPost(int postId, int userId) //stub
+        private static DateTime? _lastPostStartTime = null;
+
+        public static long getPostTime()
         {
-            // This function would handle the logic for when a user comments on a post, including updating the post's comment count and the user's interaction history.
-            return;
+            if (_lastPostStartTime == null)
+            {
+                // initial start time for the first post
+                _lastPostStartTime = DateTime.Now;
+                return 0;
+            }
+
+            // Calculate time passed on a post
+            TimeSpan timeSpent = DateTime.Now - _lastPostStartTime.Value;
+
+            // Reset the start time for the next post
+            _lastPostStartTime = DateTime.Now;
+
+            return (long)timeSpent.TotalMilliseconds;
         }
 
-        public static void sharePost(int postId, int userId) //stub
+        public static void UpdateUserTagScore(int userId, int postId, long timeSpentMs)
         {
-            // This function would handle the logic for when a user shares a post, including updating the post's share count and the user's interaction history.
-            return;
+            string usersPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..\\..\\..\\..\\data\\users.json");
+            string postsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..\\..\\..\\..\\data\\posts.json");
+
+            if (!File.Exists(usersPath) || !File.Exists(postsPath)) return;
+
+            try
+            {
+                // Get the tags for the specific post
+                string postsJson = File.ReadAllText(postsPath);
+                var posts = JsonSerializer.Deserialize<List<Post>>(postsJson);
+                var currentPost = posts?.FirstOrDefault(p => p.postId == postId);
+
+                if (currentPost == null || currentPost.tags == null) return;
+
+                /* Determine points to add based on time
+                 * 0-2 seconds: 0 points
+                 * 2-5 seconds: 2 points
+                 * 5-15 seconds: 5 points
+                 * 15+ seconds: 10 points
+                */
+
+                if (GlobalConfig.debugMode)
+                {
+                    Debug.WriteLine($"Debug Mode | Time spent on Post {postId}: {timeSpentMs}ms");
+                }
+
+                int pointsToAdd = 0;
+                if (timeSpentMs > 15000)
+                {
+                    pointsToAdd = 10;
+                }
+                else if (timeSpentMs > 5000)
+                {
+                    pointsToAdd = 5;
+                }
+                else if (timeSpentMs > 2000)
+                {
+                    pointsToAdd = 2;
+                } else
+                {
+                    pointsToAdd = -2; // If the user spends less than 2 seconds, subtacks 2 points
+                }
+
+                // Update the user's tag scores
+                string usersJson = File.ReadAllText(usersPath);
+                List<User> users = JsonSerializer.Deserialize<List<User>>(usersJson) ?? new List<User>();
+                var user = users.FirstOrDefault(u => u.userId == userId);
+
+                if (user != null)
+                {
+                    foreach (var postTag in currentPost.tags)
+                    {
+                        var userTag = user.pitsTags.FirstOrDefault(t => t.tag.Trim().ToLower() == postTag.Trim().ToLower());
+                        if (userTag != null) // Checks if it is null to make the compiler happy
+                        {
+                            userTag.score += pointsToAdd; // Add points to the tag score
+                        }
+                    }
+
+                    // Save it
+                    var options = new JsonSerializerOptions { WriteIndented = true };
+                    File.WriteAllText(usersPath, JsonSerializer.Serialize(users, options));
+
+                    if (GlobalConfig.debugMode)
+                    {
+                        Debug.WriteLine($"Debug Mode | Added {pointsToAdd} points to tags for Post {postId} (Time: {timeSpentMs}ms)");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine("Error in UpdateUserTagScore: " + ex.Message);
+            }
+        }
+
+
+        public static void UpdateUserEngagement(int userId, int postId, string interaction)
+        {
+            string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+            string usersPath = Path.Combine(baseDir, "..\\..\\..\\..\\data\\users.json");
+            string postsPath = Path.Combine(baseDir, "..\\..\\..\\..\\data\\posts.json");
+
+            if (!File.Exists(usersPath) || !File.Exists(postsPath)) return;
+
+            // Determine points and label based on interaction
+            int pointsToAdd = 0;
+
+            switch (interaction)
+            {
+                case "Like":
+                    pointsToAdd = 5;
+                    break;
+                case "Comment":
+                    pointsToAdd = 10;
+                    break;
+                case "Share":
+                    pointsToAdd = 20;
+                    break;
+                default:
+                    break;
+            }
+
+            // Gets posts and deserilize it
+            var posts = JsonSerializer.Deserialize<List<Post>>(File.ReadAllText(postsPath));
+            var currentPost = posts?.FirstOrDefault(p => p.postId == postId);
+
+            if (currentPost?.tags == null) return;
+
+            // Gets user and deserilize it
+            List<User> users = JsonSerializer.Deserialize<List<User>>(File.ReadAllText(usersPath)) ?? new List<User>();
+            var user = users.FirstOrDefault(u => u.userId == userId);
+
+            if (user != null)
+            {
+                user.pitsTags ??= new List<UserTag>();
+
+                // Update PtIS Scores
+                foreach (var postTag in currentPost.tags)
+                {
+                    string normalizedPostTag = postTag.Trim().ToLower();
+                    var userTag = user.pitsTags.FirstOrDefault(t => t.tag.Trim().ToLower() == normalizedPostTag);
+
+                    if (userTag != null)
+                    {
+                        userTag.score += pointsToAdd;
+                    }
+                }
+
+                // Saves
+                var options = new JsonSerializerOptions { WriteIndented = true };
+                File.WriteAllText(usersPath, JsonSerializer.Serialize(users, options));
+
+                if (GlobalConfig.debugMode)
+                {
+                    Debug.WriteLine($"Debug Mode | {interaction} Post {postId}: Added {pointsToAdd} points for User {userId}");
+                }
+            }
         }
 
         /*
@@ -268,7 +499,7 @@ namespace SR_Case___Algoritmernes_Magt
 
 
             // Validate input values
-            if (PTIS <= 0 || PTIS >= 100 || likes <= 0 || comments <= 0 || shares <= 0 || postEngagement <= 0 || postEngagement >= 1000)
+            if (PTIS < 0 || PTIS > 100 || likes < 0 || comments < 0 || shares < 0 || postEngagement < 0 || postEngagement > 1000)
             {
                 // If any input value is out of the expected range, return -1 to indicate an error
                 // And log invalid input values for debugging
@@ -326,10 +557,8 @@ namespace SR_Case___Algoritmernes_Magt
             string extension = Path.GetExtension(imageFilePath);
 
             // Takes existing posts and deserializes them
-
-            // There is a bug where if no data is in the posts.json file, it will crash.
             List<Post> posts = new List<Post>();
-            if (File.Exists(postsPath) && postsPath.Length != 0)
+            if (File.Exists(postsPath) && new FileInfo(postsPath).Length != 0)
             {
                 string existingJson = File.ReadAllText(postsPath);
                 posts = JsonSerializer.Deserialize<List<Post>>(existingJson) ?? new List<Post>();
@@ -338,51 +567,53 @@ namespace SR_Case___Algoritmernes_Magt
             // New id, takes highest existing id and adds 1
             int newId = posts.Count > 0 ? posts.Max(p => p.postId) + 1 : 1;
 
-
             // Define the path for the new image
             string fullPathToImage = Path.Combine(imagesFolder, newId + extension);
 
             if (File.Exists(imageFilePath))
             {
-                // Ensure directory exists and copy the file
                 Directory.CreateDirectory(imagesFolder);
                 File.Copy(imageFilePath, fullPathToImage, true);
-            } else
+            }
+            else
             {
                 if (GlobalConfig.debugMode == true)
                 {
-                    Debug.WriteLine("Debug Mode | Image file not found at path: " + imageFilePath + "\nFunction has stopped to prevent id numbers to get fucked up");
+                    Debug.WriteLine("Debug Mode | Image file not found at path: " + imageFilePath);
                 }
                 MessageBox.Show("Something went wrong there...");
                 return false;
             }
 
+            // Trims and removes empty tags
+            List<string> cleanedTags = tags?
+                .Select(t => t.Trim())
+                .Where(t => !string.IsNullOrEmpty(t))
+                .ToList() ?? new List<string>();
 
+            // Creates a new post in the list
+            Post newPost = new Post
+            {
+                postId = newId,
+                title = title,
+                description = description,
+                imagePath = $"data/assets/images/{newId}{extension}",
+                likes = 0,
+                comments = 0,
+                shares = 0,
+                engagement = 0,
+                tags = cleanedTags, // Using the cleaned list
+                PostDate = DateTime.Now
+            };
 
-                //Creates a new post in the list
-                Post newPost = new Post
-                {
-                    postId = newId,
-                    title = title,
-                    description = description,
-                    imagePath = $"data/assets/images/{newId}{extension}",
-                    likes = 0,
-                    comments = 0,
-                    shares = 0,
-                    engagement = 0,
-                    tags = tags,
-                    PostDate = DateTime.Now
-                };
+            // Save the new post 
+            posts.Add(newPost);
+            var options = new JsonSerializerOptions { WriteIndented = true };
+            string updatedJson = JsonSerializer.Serialize(posts, options);
 
+            File.WriteAllText(postsPath, updatedJson);
 
-            // save the new post 
-            posts.Add(newPost); // Add the new post to the list
-            var options = new JsonSerializerOptions { WriteIndented = true }; // For better readability of the JSON file
-            string updatedJson = JsonSerializer.Serialize(posts, options); // Serialize the updated list back to JSON
-
-            File.WriteAllText(postsPath, updatedJson); // Save it to the file
-
-            Debug.WriteLine("Successfully created Post, ID: " + newId + ", Title: "+ title);
+            Debug.WriteLine("Successfully created Post, ID: " + newId + ", Title: " + title);
             return true;
         }
 
