@@ -233,21 +233,27 @@ namespace SR_Case___Algoritmernes_Magt
             if (GlobalConfig.debugMode) {
                 Debug.WriteLine("Debug Mode | Best Post ID: " + bestPostId + " with a score of: " + highestScore);
             }
-            EnsureTagsExistInUser(userId, allPosts.FirstOrDefault(p => p.postId == bestPostId)?.tags ?? new List<string>());
+            ensureTagsExistInUser(userId, allPosts.FirstOrDefault(p => p.postId == bestPostId)?.tags ?? new List<string>());
             return bestPostId;
         }
 
-        static void EnsureTagsExistInUser(int userId, List<string> postTags)
+        // Checks and creates tags in the user's pitsTags if they don't already exist
+        static void ensureTagsExistInUser(int userId, List<string> postTags)
         {
             string usersPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..\\..\\..\\..\\data\\users.json");
-            if (!File.Exists(usersPath)) return;
+            if (!File.Exists(usersPath))
+            {
+                return;
+            }
 
             try
             {
+                // Reads the users.json file and deserializes it into a list of User objects
                 string json = File.ReadAllText(usersPath);
                 List<User> users = JsonSerializer.Deserialize<List<User>>(json) ?? new List<User>();
                 var user = users.FirstOrDefault(u => u.userId == userId);
 
+                // If the user is found, we check if they have pitsTags, if not we initialize it, and then we add any missing tags from the post to the user's pitsTags
                 if (user != null)
                 {
                     user.pitsTags ??= new List<UserTag>();
@@ -256,10 +262,12 @@ namespace SR_Case___Algoritmernes_Magt
                     {
                         if (!user.pitsTags.Any(t => t.tag == tag))
                         {
+                            // Adds them with a default score of 10
                             user.pitsTags.Add(new UserTag { tag = tag, score = 10 });
                         }
                     }
 
+                    // After ensuring all tags exist, we serialize the updated users list back to JSON and save it to the file
                     var options = new JsonSerializerOptions { WriteIndented = true };
                     string updatedJson = JsonSerializer.Serialize(users, options);
                     File.WriteAllText(usersPath, updatedJson);
@@ -267,13 +275,28 @@ namespace SR_Case___Algoritmernes_Magt
             }
             catch (Exception ex)
             {
-                Debug.WriteLine("Error ensuring tags exist in user: " + ex.Message);
+                Debug.WriteLine("Error EnsureTagsExistInUser(): " + ex.Message);
             }
         }
 
-        public static int postEngagementTimer()
+        private static DateTime? _lastPostStartTime = null;
+
+        public static long getPostTime()
         {
-            return -1;
+            if (_lastPostStartTime == null)
+            {
+                // initial start time for the first post
+                _lastPostStartTime = DateTime.Now;
+                return 0;
+            }
+
+            // Calculate time passed since the last "Next" click
+            TimeSpan timeSpent = DateTime.Now - _lastPostStartTime.Value;
+
+            // Reset the start time for the NEW post that just loaded
+            _lastPostStartTime = DateTime.Now;
+
+            return (long)timeSpent.TotalMilliseconds;
         }
 
         public static void likePost(int postId)
