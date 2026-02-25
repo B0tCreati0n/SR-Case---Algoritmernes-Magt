@@ -11,6 +11,8 @@ A technical prototype built for an **SR Case** (Studieretningsprojekt) at **HANS
 
 This application simulates a social media recommendation algorithm as a "Black Box." It tracks two types of behavioral signals — **linger time** (how long you look at a post) and **active engagement** (likes, comments, shares) — to calculate user interest weights (`pitsTags`). The feed is then dynamically re-ranked to prioritize content matching those weights, offering a hands-on demonstration of how **Filter Bubbles** and **Echo Chambers** are technically constructed.
 
+![App running — Majestic Herkules post](docs/assets/images/Screenshot%20of%20product.png)
+
 ## Getting Started
 
 ### Option A — Download a Release
@@ -40,6 +42,7 @@ SR-Case---Algoritmernes-Magt/
 ├── src/                   # Source code
 ├── data/                  # Example data
 │   └── assets/images/     # Post images
+├── docs/                  # Screenshots and documentation assets
 └── README.md
 ```
 
