@@ -1,14 +1,31 @@
 [
   {
     "userId": 1,
-    "name": "Noah",
     "pitsTags": [
-        { "tag": "politics", "score": 0 },
-        { "tag": "sport", "score": 0 },
-        { "tag": "funny", "score": 0 },
-        { "tag": "dogs", "score": 0 }
-    ],
-    "lastWatchedVideos": [
+      {
+        "tag": "funny",
+        "score": 10
+      },
+      {
+        "tag": "dogs",
+        "score": 10
+      },
+      {
+        "tag": "doggo",
+        "score": 10
+      },
+      {
+        "tag": " cute",
+        "score": 10
+      },
+      {
+        "tag": " love",
+        "score": 10
+      },
+      {
+        "tag": " Herkules",
+        "score": 10
+      }
     ]
   }
 ]

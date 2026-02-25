@@ -29,6 +29,17 @@ namespace SR_Case___Algoritmernes_Magt
         public required List<string> tags { get; set; }
         public DateTime PostDate { get; set; }
     }
+    public class User
+    {
+        public int userId { get; set; }
+        public List<UserTag> pitsTags { get; set; } = new List<UserTag>();
+    }
+
+    public class UserTag
+    {
+        public required string tag { get; set; }
+        public int score { get; set; }
+    }
 
     internal static class Program
     {
@@ -222,45 +233,53 @@ namespace SR_Case___Algoritmernes_Magt
             if (GlobalConfig.debugMode) {
                 Debug.WriteLine("Debug Mode | Best Post ID: " + bestPostId + " with a score of: " + highestScore);
             }
+            EnsureTagsExistInUser(userId, allPosts.FirstOrDefault(p => p.postId == bestPostId)?.tags ?? new List<string>());
             return bestPostId;
         }
 
-        public static void likePost(int postId)
+        static void EnsureTagsExistInUser(int userId, List<string> postTags)
         {
-            string postsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..\\..\\..\\..\\data\\posts.json");
-
-            if (!File.Exists(postsPath)) 
-            { 
-                return; 
-            }
+            string usersPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..\\..\\..\\..\\data\\users.json");
+            if (!File.Exists(usersPath)) return;
 
             try
             {
-                // Get the posts, deserialize them, and find the target post
-                string json = File.ReadAllText(postsPath);
-                List<Post> posts = JsonSerializer.Deserialize<List<Post>>(json) ?? new List<Post>();
+                string json = File.ReadAllText(usersPath);
+                List<User> users = JsonSerializer.Deserialize<List<User>>(json) ?? new List<User>();
+                var user = users.FirstOrDefault(u => u.userId == userId);
 
-                // Find the post and update likes
-                Post targetPost = posts.FirstOrDefault(p => p.postId == postId);
-                if (targetPost != null)
+                if (user != null)
                 {
-                    targetPost.likes++;
+                    user.pitsTags ??= new List<UserTag>();
 
-                    // Serialize and Save
-                    var options = new JsonSerializerOptions { WriteIndented = true };
-                    string updatedJson = JsonSerializer.Serialize(posts, options);
-                    File.WriteAllText(postsPath, updatedJson);
-
-                    if (GlobalConfig.debugMode)
+                    foreach (var tag in postTags)
                     {
-                        Debug.WriteLine($"Debug Mode | Post {postId} liked. New count: {targetPost.likes}");
+                        if (!user.pitsTags.Any(t => t.tag == tag))
+                        {
+                            user.pitsTags.Add(new UserTag { tag = tag, score = 10 });
+                        }
                     }
+
+                    var options = new JsonSerializerOptions { WriteIndented = true };
+                    string updatedJson = JsonSerializer.Serialize(users, options);
+                    File.WriteAllText(usersPath, updatedJson);
                 }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine("Error liking post: " + ex.Message);
+                Debug.WriteLine("Error ensuring tags exist in user: " + ex.Message);
             }
+        }
+
+        public static int postEngagementTimer()
+        {
+            return -1;
+        }
+
+        public static void likePost(int postId)
+        {
+            // This function would handle the logic for when a user likes a post, including updating the post's like count and the user's interaction history.
+            return;
         }
 
         public static void commentOnPost(int postId) //stub
