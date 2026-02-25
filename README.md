@@ -1,7 +1,7 @@
 # SR Case: Algoritmernes Magt / The Power of Algorithms
 
 ![C#](https://img.shields.io/badge/language-C%23-blue.svg)
-![Framework](https://img.shields.io/badge/framework-.NET%2010.0%20WinForms-orange.svg)
+![Framework](https://img.shields.io/badge/framework-.NET%2010.0-orange.svg)
 ![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)
 ![Status](https://img.shields.io/badge/status-unmaintained-red.svg)
 
