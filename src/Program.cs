@@ -80,6 +80,10 @@ namespace SR_Case___Algoritmernes_Magt
         public static int userId()//stub
         {
             //This is gonna return the current user's userId
+
+            // This is a scrapped idea, don't think about it
+            // But it was the plan to be able to create multiple users and switch between them
+            // But i also have to do a report on this shit :(
             return 1;
         
         }
