@@ -4,6 +4,7 @@ namespace SR_Case___Algoritmernes_Magt
 {
     public partial class Form1 : Form
     {
+        private int currentPostId = -1;
         public Form1()
         {
             InitializeComponent();
@@ -22,18 +23,18 @@ namespace SR_Case___Algoritmernes_Magt
 
         private void btn_skip_Click(object sender, EventArgs e)
         {
-            int nextPost = Program.requstNewPostToFeed(Program.userId());
-            if (nextPost <= 0)
+            currentPostId = Program.requstNewPostToFeed(Program.userId()); ;
+            if (currentPostId <= 0)
             {
                 if (GlobalConfig.debugMode == true)
                 {
-                    Debug.WriteLine("Debug Mode | nextPost value: " + nextPost);
+                    Debug.WriteLine("Debug Mode | nextPost value: " + currentPostId);
                 }
                 MessageBox.Show("Error, try again or restart...");
                 return;
             }
 
-            Image postImage = Image.FromFile(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, $"..\\..\\..\\..\\data\\assets\\images\\{nextPost}.jpg"));
+            Image postImage = Image.FromFile(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, $"..\\..\\..\\..\\data\\assets\\images\\{currentPostId}.jpg"));
 
             // Check if an image is rotated, and if so, rotate it to the correct orientation
             // Check if the image contains the EXIF property (0x0112) - StackOverflow
@@ -63,6 +64,21 @@ namespace SR_Case___Algoritmernes_Magt
             {
                 Debug.WriteLine("Debug Mode | Post Image Posted");
             }
+        }
+
+        private void btn_like_Click(object sender, EventArgs e)
+        {
+            Program.UpdateUserEngagement(Program.userId(), currentPostId, "Like");
+        }
+
+        private void btn_comments_Click(object sender, EventArgs e)
+        {
+            Program.UpdateUserEngagement(Program.userId(), currentPostId, "Comment");
+        }
+
+        private void btn_share_Click(object sender, EventArgs e)
+        {
+            Program.UpdateUserEngagement(Program.userId(), currentPostId, "Share");
         }
     }
 }

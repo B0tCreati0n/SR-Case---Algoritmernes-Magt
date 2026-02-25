@@ -61,6 +61,7 @@
             btn_like.TabIndex = 2;
             btn_like.Text = "Like";
             btn_like.UseVisualStyleBackColor = true;
+            btn_like.Click += btn_like_Click;
             // 
             // btn_share
             // 
@@ -70,6 +71,7 @@
             btn_share.TabIndex = 4;
             btn_share.Text = "Share";
             btn_share.UseVisualStyleBackColor = true;
+            btn_share.Click += btn_share_Click;
             // 
             // rtb_description
             // 
@@ -96,6 +98,7 @@
             btn_comments.TabIndex = 8;
             btn_comments.Text = "Comments";
             btn_comments.UseVisualStyleBackColor = true;
+            btn_comments.Click += btn_comments_Click;
             // 
             // label_totalShares
             // 

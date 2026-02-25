@@ -13,10 +13,10 @@ namespace SR_Case___Algoritmernes_Magt
     {
         public readonly static bool feedModePersonalization = true; //default: true
         public readonly static bool debugMode = true; //default: false
-        public readonly static int watchHistorySize = 10;
+        public readonly static int watchHistorySize = 10; // default: 10
     }
 
-    public class Post //define the class for a post
+    public class Post
     {
         public int postId { get; set; }
         public required string title { get; set; }
@@ -51,22 +51,6 @@ namespace SR_Case___Algoritmernes_Magt
             Application.Run(new Form1());
             startUp();
         }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
         static void startUp()
         {
@@ -322,9 +306,18 @@ namespace SR_Case___Algoritmernes_Magt
                  * 15+ seconds: 10 points
                 */
                 int pointsToAdd = 0;
-                if (timeSpentMs > 15000) pointsToAdd = 10;
-                else if (timeSpentMs > 5000) pointsToAdd = 5;
-                else if (timeSpentMs > 2000) pointsToAdd = 2;
+                if (timeSpentMs > 15000)
+                {
+                    pointsToAdd = 10;
+                }
+                else if (timeSpentMs > 5000)
+                {
+                    pointsToAdd = 5;
+                }
+                else if (timeSpentMs > 2000)
+                {
+                    pointsToAdd = 2;
+                }
 
                 if (pointsToAdd == 0)
                 {
@@ -363,22 +356,68 @@ namespace SR_Case___Algoritmernes_Magt
             }
         }
 
-        public static void likePost(int postId)
-        {
-            // This function would handle the logic for when a user likes a post, including updating the post's like count and the user's interaction history.
-            return;
-        }
 
-        public static void commentOnPost(int postId) //stub
+        public static void UpdateUserEngagement(int userId, int postId, string interaction)
         {
-            // This function would handle the logic for when a user comments on a post, including updating the post's comment count and the user's interaction history.
-            return;
-        }
+            string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+            string usersPath = Path.Combine(baseDir, "..\\..\\..\\..\\data\\users.json");
+            string postsPath = Path.Combine(baseDir, "..\\..\\..\\..\\data\\posts.json");
 
-        public static void sharePost(int postId) //stub
-        {
-            // This function would handle the logic for when a user shares a post, including updating the post's share count and the user's interaction history.
-            return;
+            if (!File.Exists(usersPath) || !File.Exists(postsPath)) return;
+
+            // Determine points and label based on interaction
+            int pointsToAdd = 0;
+
+            switch (interaction)
+            {
+                case "Like":
+                    pointsToAdd = 5;
+                    break;
+                case "Comment":
+                    pointsToAdd = 10;
+                    break;
+                case "Share":
+                    pointsToAdd = 20;
+                    break;
+                default:
+                    break;
+            }
+
+            // Gets posts and deserilize it
+            var posts = JsonSerializer.Deserialize<List<Post>>(File.ReadAllText(postsPath));
+            var currentPost = posts?.FirstOrDefault(p => p.postId == postId);
+
+            if (currentPost?.tags == null) return;
+
+            // Gets user and deserilize it
+            List<User> users = JsonSerializer.Deserialize<List<User>>(File.ReadAllText(usersPath)) ?? new List<User>();
+            var user = users.FirstOrDefault(u => u.userId == userId);
+
+            if (user != null)
+            {
+                user.pitsTags ??= new List<UserTag>();
+
+                // Update PtIS Scores
+                foreach (var postTag in currentPost.tags)
+                {
+                    string normalizedPostTag = postTag.Trim().ToLower();
+                    var userTag = user.pitsTags.FirstOrDefault(t => t.tag.Trim().ToLower() == normalizedPostTag);
+
+                    if (userTag != null)
+                    {
+                        userTag.score += pointsToAdd;
+                    }
+                }
+
+                // Saves
+                var options = new JsonSerializerOptions { WriteIndented = true };
+                File.WriteAllText(usersPath, JsonSerializer.Serialize(users, options));
+
+                if (GlobalConfig.debugMode)
+                {
+                    Debug.WriteLine($"Debug Mode | {interaction} Post {postId}: Added {pointsToAdd} points for User {userId}");
+                }
+            }
         }
 
         /*
